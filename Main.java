@@ -44,7 +44,8 @@ public class Main {
             System.out.println("17. Display Seating Chart");
             System.out.println("18. Allocate Invigilators");
             System.out.println("19. View Invigilator Allocations");
-            System.out.println("20. Exit");
+            System.out.println("20. System Dashboard");
+            System.out.println("21. Exit");
 
             System.out.print("Enter your choice: ");
 
@@ -139,6 +140,10 @@ public class Main {
                     break;
 
                 case 20:
+                    displayDashboard();
+                    break;
+
+                case 21:
                     System.out.println("Exiting project...");
                     break;
 
@@ -146,7 +151,7 @@ public class Main {
                     System.out.println("Invalid choice!");
             }
 
-        } while (choice != 18);
+        } while (choice != 21);
 
         sc.close();
     }
@@ -568,6 +573,49 @@ public class Main {
             System.out.println("No invigilator allocation was completed.");
         }
     }
+
+
+    // Displays overall project statistics
+    static void displayDashboard() {
+
+        // Count registered students
+        int totalStudents = studentManager.getStudents().size();
+
+        // Count registered rooms
+        int totalRooms = rooms.size();
+
+        // Calculate total room capacity
+        int totalCapacity = 0;
+
+        for (Room room : rooms) {
+            totalCapacity += room.getCapacity();
+        }
+
+        // Count exam sessions and invigilators
+        int totalSessions = sessionManager.getSessions().size();
+        int totalInvigilators = invigilators.size();
+
+        // Display dashboard
+        System.out.println("\n========== SYSTEM DASHBOARD ==========");
+
+        System.out.printf("%-28s: %d%n",
+                "Total Students", totalStudents);
+
+        System.out.printf("%-28s: %d%n",
+                "Total Rooms", totalRooms);
+
+        System.out.printf("%-28s: %d%n",
+                "Total Room Capacity", totalCapacity);
+
+        System.out.printf("%-28s: %d%n",
+                "Total Exam Sessions", totalSessions);
+
+        System.out.printf("%-28s: %d%n",
+                "Total Invigilators", totalInvigilators);
+
+        System.out.println("======================================");
+    }
+
 
 
 }
