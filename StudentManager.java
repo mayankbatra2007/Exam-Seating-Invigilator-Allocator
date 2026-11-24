@@ -1,50 +1,171 @@
-// This class will manage our student records using multiple collections.
-
 import java.util.ArrayList;
 import java.util.LinkedList;
 import java.util.HashSet;
 import java.util.LinkedHashSet;
 import java.util.TreeSet;
 
+import java.sql.Connection;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+
+import java.util.Locale;
+
 public class StudentManager {
 
-    // Stores complete student objects
+    // Stores complete student objects.
     private ArrayList<Student> students = new ArrayList<>();
 
-    // Stores students who could not be seated
+    // Stores students who could not be seated.
     private LinkedList<Student> overflowStudents = new LinkedList<>();
 
-    // Stores unique roll numbers for duplicate checking
+    // Stores unique roll numbers for duplicate checking.
     private HashSet<String> rollNumbers = new HashSet<>();
 
-    // Stores unique branches in insertion order
+    // Stores unique branches in insertion order.
     private LinkedHashSet<String> branches = new LinkedHashSet<>();
 
-    // Stores roll numbers in sorted order
+    // Stores roll numbers in sorted order.
     private TreeSet<String> sortedRollNumbers = new TreeSet<>();
 
-    // Add a student if roll number is not duplicate
+    // Load saved students when the manager is created.
+    public StudentManager() {
+        loadStudentsFromDatabase();
+    }
+
+    // Convert roll number to a consistent format.
+    private String normalizeRollNo(String rollNo) {
+        return rollNo.trim().toLowerCase(Locale.ROOT);
+    }
+
+    // Add a student to MySQL and Java collections.
     public boolean addStudent(Student student) {
 
         String rollNo = student.getRollNo();
 
-        // HashSet checks duplicates efficiently
-        if (rollNumbers.contains(rollNo)) {
+        // Check duplicate roll number in Java.
+        if (rollNumbers.contains(normalizeRollNo(rollNo))) {
+            System.out.println("Student already exists!");
             return false;
         }
 
-        students.add(student);
-        rollNumbers.add(rollNo);
-        branches.add(student.getBranch());
-        sortedRollNumbers.add(rollNo);
+        String sql = "INSERT INTO students "
+                   + "(roll_no, name, branch, subject) "
+                   + "VALUES (?, ?, ?, ?)";
 
-        return true;
+        try (
+            Connection connection =
+                    DatabaseConnection.getConnection();
+
+            PreparedStatement ps =
+                    connection.prepareStatement(sql)
+        ) {
+
+            ps.setString(1, student.getRollNo());
+            ps.setString(2, student.getName());
+            ps.setString(3, student.getBranch());
+            ps.setString(4, student.getSubject());
+
+            // Save student in MySQL.
+            int rowsInserted = ps.executeUpdate();
+
+            if (rowsInserted > 0) {
+
+                // Update Java collections only after DB success.
+                students.add(student);
+
+                rollNumbers.add(normalizeRollNo(rollNo));
+
+                branches.add(student.getBranch());
+
+                sortedRollNumbers.add(rollNo);
+
+                System.out.println(
+                        "Student saved successfully!"
+                );
+
+                return true;
+            }
+
+        } catch (SQLException e) {
+
+            System.out.println(
+                    "Could not save student to database."
+            );
+
+            e.printStackTrace();
+        }
+
+        return false;
     }
 
-    // Search student using roll number
+    // Load all students from MySQL.
+    public void loadStudentsFromDatabase() {
+
+        String sql = "SELECT roll_no, name, branch, subject "
+                   + "FROM students";
+
+        try (
+            Connection connection =
+                    DatabaseConnection.getConnection();
+
+            PreparedStatement ps =
+                    connection.prepareStatement(sql);
+
+            ResultSet rs = ps.executeQuery()
+        ) {
+
+            // Clear existing collections before loading.
+            students.clear();
+            rollNumbers.clear();
+            branches.clear();
+            sortedRollNumbers.clear();
+
+            while (rs.next()) {
+
+                String rollNo = rs.getString("roll_no");
+                String name = rs.getString("name");
+                String branch = rs.getString("branch");
+                String subject = rs.getString("subject");
+
+                Student student = new Student(
+                        rollNo,
+                        name,
+                        branch,
+                        subject
+                );
+
+                students.add(student);
+
+                rollNumbers.add(
+                        normalizeRollNo(rollNo)
+                );
+
+                branches.add(branch);
+
+                sortedRollNumbers.add(rollNo);
+            }
+
+            System.out.println(
+                    "Students loaded from database: "
+                            + students.size()
+            );
+
+        } catch (SQLException e) {
+
+            System.out.println(
+                    "Could not load students from database."
+            );
+
+            e.printStackTrace();
+        }
+    }
+
+    // Search student using roll number.
     public Student searchStudent(String rollNo) {
 
         for (Student student : students) {
+
             if (student.getRollNo().equalsIgnoreCase(rollNo)) {
                 return student;
             }
@@ -53,7 +174,7 @@ public class StudentManager {
         return null;
     }
 
-    // Remove student using roll number
+    // Remove student from MySQL and Java collections.
     public boolean removeStudent(String rollNo) {
 
         Student student = searchStudent(rollNo);
@@ -62,21 +183,60 @@ public class StudentManager {
             return false;
         }
 
-        students.remove(student);
-        rollNumbers.remove(student.getRollNo());
-        sortedRollNumbers.remove(student.getRollNo());
+        String sql = "DELETE FROM students WHERE roll_no = ?";
 
-        // Rebuild branches because a branch may no longer have students
-        branches.clear();
+        try (
+            Connection connection =
+                    DatabaseConnection.getConnection();
 
-        for (Student s : students) {
-            branches.add(s.getBranch());
+            PreparedStatement ps =
+                    connection.prepareStatement(sql)
+        ) {
+
+            ps.setString(1, student.getRollNo());
+
+            int rowsDeleted = ps.executeUpdate();
+
+            if (rowsDeleted > 0) {
+
+                students.remove(student);
+
+                rollNumbers.remove(
+                        normalizeRollNo(student.getRollNo())
+                );
+
+                sortedRollNumbers.remove(
+                        student.getRollNo()
+                );
+
+                // Rebuild branches because a branch may
+                // no longer have any students.
+                branches.clear();
+
+                for (Student s : students) {
+                    branches.add(s.getBranch());
+                }
+
+                System.out.println(
+                        "Student removed successfully!"
+                );
+
+                return true;
+            }
+
+        } catch (SQLException e) {
+
+            System.out.println(
+                    "Could not remove student from database."
+            );
+
+            e.printStackTrace();
         }
 
-        return true;
+        return false;
     }
 
-    // Display all students
+    // Display all students.
     public void displayStudents() {
 
         if (students.isEmpty()) {
@@ -89,7 +249,7 @@ public class StudentManager {
         }
     }
 
-    // Display student roll numbers in sorted order
+    // Display student roll numbers in sorted order.
     public void displaySortedRollNumbers() {
 
         System.out.println("Sorted Roll Numbers:");
@@ -99,7 +259,7 @@ public class StudentManager {
         }
     }
 
-    // Display unique branches in insertion order
+    // Display unique branches in insertion order.
     public void displayBranches() {
 
         System.out.println("Available Branches:");
@@ -109,12 +269,12 @@ public class StudentManager {
         }
     }
 
-    // Add a student to overflow list
+    // Add a student to overflow list.
     public void addToOverflow(Student student) {
         overflowStudents.add(student);
     }
 
-    // Display overflow students
+    // Display overflow students.
     public void displayOverflowStudents() {
 
         if (overflowStudents.isEmpty()) {
@@ -129,12 +289,12 @@ public class StudentManager {
         }
     }
 
-    // Return number of students
+    // Return number of students.
     public int getStudentCount() {
         return students.size();
     }
 
-    // Return overflow count
+    // Return overflow count.
     public int getOverflowCount() {
         return overflowStudents.size();
     }
@@ -144,28 +304,8 @@ public class StudentManager {
         overflowStudents.clear();
     }
 
-    // Return student list for future algorithms
+    // Return student list for existing algorithms.
     public ArrayList<Student> getStudents() {
         return students;
     }
 }
-
-// ArrayList<Student> -> Purpose: Store all student objects.
-// private ArrayList<Student> students = new ArrayList<>();
-
-// LinkedList<Student> -> Maintain students who could not be seated.
-// private LinkedList<Student> overflowStudents = new LinkedList<>();
-
-// HashSet<String>
-// private HashSet<String> rollNumbers = new HashSet<>();
-// Purpose: Prevent duplicate roll numbers.
-
-// LinkedHashSet<String>
-// private LinkedHashSet<String> branches = new LinkedHashSet<>();
-// Remember: LinkedHashSet maintains insertion order and removes duplicates
-
-// TreeSet<String>
-// private TreeSet<String> sortedRollNumbers = new TreeSet<>();
-// TreeSet stores unique elements in sorted order.
-
-

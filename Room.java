@@ -1,4 +1,8 @@
-// A room has an ID, rows and columns. We'll use a 2D array to represent seats.
+import java.sql.Connection;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.util.ArrayList;
 
 public class Room {
 
@@ -14,12 +18,7 @@ public class Room {
         this.rows = rows;
         this.columns = columns;
 
-        // Create the seating grid
         seats = new String[rows][columns];
-    }
-
-    public String[][] getSeats() {
-        return seats;
     }
 
     public String getRoomId() {
@@ -34,25 +33,88 @@ public class Room {
         return columns;
     }
 
+    public String[][] getSeats() {
+        return seats;
+    }
+
     public int getCapacity() {
         return rows * columns;
     }
 
-    // Display room information
     public void displayRoom() {
         System.out.println("Room ID: " + roomId
                 + " | Rows: " + rows
                 + " | Columns: " + columns
                 + " | Capacity: " + getCapacity());
     }
-}
 
-// Concepts used
-// - Constructor
-// - this
-// - Encapsulation
-// - Methods
-// - 2D array
-// - Array initialization
-// Remember: A room with 3 rows and 4 columns has:
-// [Capacity = 3 * 4 = 12]
+    // Save room details to MySQL
+    public static boolean saveRoom(Room room) {
+
+        String sql = "INSERT INTO rooms (room_id, row_count, column_count) "
+                   + "VALUES (?, ?, ?)";
+
+        try (Connection connection = DatabaseConnection.getConnection();
+             PreparedStatement statement = connection.prepareStatement(sql)) {
+
+            statement.setString(1, room.getRoomId());
+            statement.setInt(2, room.getRows());
+            statement.setInt(3, room.getColumns());
+
+            statement.executeUpdate();
+            return true;
+
+        } catch (SQLException e) {
+            System.out.println("Could not save room to database.");
+            System.out.println(e.getMessage());
+            return false;
+        }
+    }
+
+    // Load all saved rooms from MySQL
+    public static ArrayList<Room> loadRooms() {
+
+        ArrayList<Room> loadedRooms = new ArrayList<>();
+
+        String sql = "SELECT room_id, row_count, column_count FROM rooms";
+
+        try (Connection connection = DatabaseConnection.getConnection();
+             PreparedStatement statement = connection.prepareStatement(sql);
+             ResultSet resultSet = statement.executeQuery()) {
+
+            while (resultSet.next()) {
+
+                String roomId = resultSet.getString("room_id");
+                int rows = resultSet.getInt("row_count");
+                int columns = resultSet.getInt("column_count");
+
+                loadedRooms.add(new Room(roomId, rows, columns));
+            }
+
+        } catch (SQLException e) {
+            System.out.println("Could not load rooms from database.");
+            System.out.println(e.getMessage());
+        }
+
+        return loadedRooms;
+    }
+
+    // Delete a room from MySQL
+    public static boolean deleteRoom(String roomId) {
+
+        String sql = "DELETE FROM rooms WHERE room_id = ?";
+
+        try (Connection connection = DatabaseConnection.getConnection();
+             PreparedStatement statement = connection.prepareStatement(sql)) {
+
+            statement.setString(1, roomId);
+
+            return statement.executeUpdate() > 0;
+
+        } catch (SQLException e) {
+            System.out.println("Could not delete room from database.");
+            System.out.println(e.getMessage());
+            return false;
+        }
+    }
+}
