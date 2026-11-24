@@ -1,102 +1,67 @@
-
+import java.util.ArrayList;
 import java.util.List;
 
 public class SeatAllocator {
 
-    // Limits the search to avoid excessive computation
-    private static final long MAX_SEARCH_NODES = 200_000;
-    private long nodesVisited;
-
-    // Attempts to seat students in one room
-    public boolean allocateSeats(Room room, List<Student> students) {
+    // Allocate as many students as possible in one room.
+    public List<Student> allocateSeats(
+            Room room,
+            List<Student> students) {
 
         String[][] seats = room.getSeats();
 
-        // Clear previous seating arrangement
-        for (int i = 0; i < seats.length; i++) {
-            for (int j = 0; j < seats[i].length; j++) {
-                seats[i][j] = null;
+        // Clear previous seating arrangement.
+        for (int row = 0; row < seats.length; row++) {
+            for (int col = 0; col < seats[row].length; col++) {
+                seats[row][col] = null;
             }
         }
 
-        nodesVisited = 0;
+        ArrayList<Student> allocatedStudents = new ArrayList<>();
 
-        // Check whether students exceed room capacity
-        if (students.size() > room.getCapacity()) {
-            return false;
-        }
+        // Try to allocate every student in the given list.
+        for (Student student : students) {
 
-        boolean[] used = new boolean[students.size()];
+            boolean allocated = false;
 
-        // Start the recursive backtracking process
-        boolean result = solve(room, students, seats, used, 0);
+            // Search for a suitable empty seat.
+            for (int row = 0; row < seats.length; row++) {
 
-        // Clear room if allocation failed
-        if (!result) {
-            for (int i = 0; i < seats.length; i++) {
-                for (int j = 0; j < seats[i].length; j++) {
-                    seats[i][j] = null;
+                for (int col = 0; col < seats[row].length; col++) {
+
+                    // Skip occupied seats.
+                    if (seats[row][col] != null) {
+                        continue;
+                    }
+
+                    // Check the four neighbouring seats.
+                    if (isSafe(
+                            row,
+                            col,
+                            student.getBranch(),
+                            seats,
+                            students)) {
+
+                        // Allocate the student.
+                        seats[row][col] = student.getRollNo();
+
+                        allocatedStudents.add(student);
+
+                        allocated = true;
+                        break;
+                    }
+                }
+
+                if (allocated) {
+                    break;
                 }
             }
         }
 
-        return result;
+        return allocatedStudents;
     }
 
-    // Recursive method to assign students to seats
-    private boolean solve(
-            Room room,
-            List<Student> students,
-            String[][] seats,
-            boolean[] used,
-            int position) {
-
-        // All students have been seated successfully
-        if (position == students.size()) {
-            return true;
-        }
-
-        // Stop if the search limit is reached
-        if (++nodesVisited > MAX_SEARCH_NODES) {
-            return false;
-        }
-
-        int colCount = room.getColumns();
-        int row = position / colCount;
-        int col = position % colCount;
-
-        // Try every unused student
-        for (int i = 0; i < students.size(); i++) {
-
-            if (used[i]) {
-                continue;
-            }
-
-            Student student = students.get(i);
-
-            // Check neighbouring branch constraints
-            if (!isSafe(row, col, student.getBranch(), seats, students)) {
-                continue;
-            }
-
-            // Assign student to current seat
-            seats[row][col] = student.getRollNo();
-            used[i] = true;
-
-            // Recursively try the next seat
-            if (solve(room, students, seats, used, position + 1)) {
-                return true;
-            }
-
-            // Backtrack: undo this assignment
-            seats[row][col] = null;
-            used[i] = false;
-        }
-
-        return false;
-    }
-
-    // Checks the four neighbouring seats
+    // Check whether a seat is safe for the student's branch.
     private boolean isSafe(
             int row,
             int col,
@@ -104,34 +69,50 @@ public class SeatAllocator {
             String[][] seats,
             List<Student> students) {
 
-        // Check above
+        // Check the seat above.
         if (row > 0 &&
-            sameBranch(seats[row - 1][col], branch, students)) {
+                sameBranch(
+                        seats[row - 1][col],
+                        branch,
+                        students)) {
+
             return false;
         }
 
-        // Check below
+        // Check the seat below.
         if (row + 1 < seats.length &&
-            sameBranch(seats[row + 1][col], branch, students)) {
+                sameBranch(
+                        seats[row + 1][col],
+                        branch,
+                        students)) {
+
             return false;
         }
 
-        // Check left
+        // Check the seat on the left.
         if (col > 0 &&
-            sameBranch(seats[row][col - 1], branch, students)) {
+                sameBranch(
+                        seats[row][col - 1],
+                        branch,
+                        students)) {
+
             return false;
         }
 
-        // Check right
+        // Check the seat on the right.
         if (col + 1 < seats[row].length &&
-            sameBranch(seats[row][col + 1], branch, students)) {
+                sameBranch(
+                        seats[row][col + 1],
+                        branch,
+                        students)) {
+
             return false;
         }
 
         return true;
     }
 
-    // Finds the branch of an already seated roll number
+    // Find the branch of an already seated student.
     private boolean sameBranch(
             String rollNo,
             String branch,
@@ -142,8 +123,11 @@ public class SeatAllocator {
         }
 
         for (Student student : students) {
-            if (student.getRollNo().equals(rollNo)) {
-                return student.getBranch().equalsIgnoreCase(branch);
+
+            if (student.getRollNo().equalsIgnoreCase(rollNo)) {
+
+                return student.getBranch()
+                        .equalsIgnoreCase(branch);
             }
         }
 
