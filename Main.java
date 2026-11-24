@@ -1,5 +1,6 @@
 import java.util.ArrayList;
 import java.util.Scanner;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 public class Main {
 
@@ -389,9 +390,54 @@ public class Main {
         }
     }
 
-    // Allocates students across available rooms
+    /// Allocates students across available rooms.
+    // Allocates seating for one selected exam session.
     static void allocateSeating() {
 
+        // Get all available exam sessions.
+        ArrayList<ExamSession> sessions = sessionManager.getSessions();
+
+        if (sessions.isEmpty()) {
+            System.out.println("No exam sessions available!");
+            return;
+        }
+
+        // Display available exam sessions.
+        System.out.println("\n===== AVAILABLE EXAM SESSIONS =====");
+
+        for (int i = 0; i < sessions.size(); i++) {
+
+            ExamSession session = sessions.get(i);
+
+            System.out.println(
+                    (i + 1) + ". "
+                            + session.getSubject()
+                            + " | Date: " + session.getDate()
+                            + " | Time: " + session.getTimeSlot());
+        }
+
+        // Select the exam session.
+        System.out.print("\nSelect exam session: ");
+
+        int choice;
+
+        try {
+            choice = Integer.parseInt(sc.nextLine());
+        } catch (NumberFormatException e) {
+            System.out.println("Invalid session choice!");
+            return;
+        }
+
+        if (choice < 1 || choice > sessions.size()) {
+            System.out.println("Invalid session choice!");
+            return;
+        }
+
+        ExamSession selectedSession = sessions.get(choice - 1);
+
+        String selectedSubject = selectedSession.getSubject();
+
+        // Get all students.
         ArrayList<Student> allStudents = studentManager.getStudents();
 
         if (allStudents.isEmpty()) {
@@ -404,36 +450,80 @@ public class Main {
             return;
         }
 
-        // Clear previous overflow list before a new allocation
-        // (We will improve reset handling in a later integration phase)
+        /*
+         * IMPORTANT:
+         * Only include students whose subject matches
+         * the selected exam session.
+         */
+        ArrayList<Student> sessionStudents = new ArrayList<>();
+
+        for (Student student : allStudents) {
+
+            if (student.getSubject().equalsIgnoreCase(selectedSubject)) {
+                sessionStudents.add(student);
+            }
+        }
+
+        if (sessionStudents.isEmpty()) {
+            System.out.println(
+                    "No students registered for "
+                            + selectedSubject + " exam!");
+            return;
+        }
+
+        // Clear previous overflow records.
+        studentManager.clearOverflowStudents();
+
+        // Clear old seating arrangements before allocating a new session.
+        for (Room room : rooms) {
+
+            String[][] seats = room.getSeats();
+
+            for (int row = 0; row < seats.length; row++) {
+                for (int col = 0; col < seats[row].length; col++) {
+                    seats[row][col] = null;
+                }
+            }
+        }
 
         int studentIndex = 0;
 
+        System.out.println(
+                "\nAllocating seating for: " + selectedSubject);
+
+        System.out.println(
+                "Total students for this exam: " + sessionStudents.size());
+
+        // Allocate only the selected subject's students.
         for (Room room : rooms) {
 
-            if (studentIndex >= allStudents.size()) {
+            if (studentIndex >= sessionStudents.size()) {
                 break;
             }
 
-            // Try the largest group that fits this room
-            int groupSize = Math.min(room.getCapacity(),
-                    allStudents.size() - studentIndex);
+            int groupSize = Math.min(
+                    room.getCapacity(),
+                    sessionStudents.size() - studentIndex);
 
             boolean allocated = false;
 
-            // Reduce group size if the seating arrangement fails
+            // Try the largest group that fits this room.
             while (groupSize > 0) {
 
                 ArrayList<Student> group = new ArrayList<>();
 
                 for (int i = 0; i < groupSize; i++) {
-                    group.add(allStudents.get(studentIndex + i));
+                    group.add(sessionStudents.get(studentIndex + i));
                 }
 
-                if (seatAllocator.allocateSeats(room, group)) {
+                ArrayList<Student> allocatedStudents = new ArrayList<>(
+                        seatAllocator.allocateSeats(room, group));
 
-                    System.out.println("\nStudents allocated successfully in "
-                            + room.getRoomId());
+                if (allocatedStudents.size() == group.size()) {
+
+                    System.out.println(
+                            "Students allocated successfully in "
+                                    + room.getRoomId());
 
                     studentIndex += groupSize;
                     allocated = true;
@@ -441,26 +531,45 @@ public class Main {
                 }
 
                 groupSize--;
+
+                groupSize--;
             }
 
-            // If even a single student could not be seated, move to next room
             if (!allocated) {
-                System.out.println("Unable to allocate students in "
-                        + room.getRoomId());
+
+                System.out.println(
+                        "Unable to allocate students in "
+                                + room.getRoomId());
             }
         }
 
-        // Remaining students are overflow students
-        while (studentIndex < allStudents.size()) {
+        // Add only the selected exam's remaining students to overflow.
+        while (studentIndex < sessionStudents.size()) {
 
-            Student student = allStudents.get(studentIndex);
+            Student student = sessionStudents.get(studentIndex);
+
             studentManager.addToOverflow(student);
 
             studentIndex++;
         }
 
+        System.out.println("\n===== SEATING ALLOCATION REPORT =====");
+
+        System.out.println("Exam Subject: " + selectedSubject);
+
+        System.out.println(
+                "Total Students: " + sessionStudents.size());
+
+        System.out.println(
+                "Successfully Seated: "
+                        + (sessionStudents.size()
+                                - studentManager.getOverflowCount()));
+
+        System.out.println(
+                "Overflow Students: "
+                        + studentManager.getOverflowCount());
+
         System.out.println("\nSeating allocation process completed.");
-        System.out.println("Students processed: " + allStudents.size());
     }
 
     // Displays the seating arrangement of all rooms
@@ -545,41 +654,117 @@ public class Main {
 
         ExamSession selectedSession = sessions.get(sessionChoice - 1);
 
-        boolean allocatedAny = false;
+        AtomicBoolean allocatedAny = new AtomicBoolean(false);
 
-        // Process each room
+        ArrayList<Thread> allocationThreads = new ArrayList<>();
+
+        // Create one worker thread for each room that has students.
         for (Room room : rooms) {
 
             String[][] seats = room.getSeats();
             int studentCount = 0;
 
-            // Count occupied seats
-            for (int i = 0; i < seats.length; i++) {
-                for (int j = 0; j < seats[i].length; j++) {
-                    if (seats[i][j] != null) {
+            // Count students in the room.
+            for (int row = 0; row < seats.length; row++) {
+                for (int col = 0; col < seats[row].length; col++) {
+
+                    if (seats[row][col] != null) {
                         studentCount++;
                     }
                 }
             }
 
-            // Skip empty rooms
+            // Do not create a worker for an empty room.
             if (studentCount == 0) {
                 continue;
             }
 
-            boolean success = invigilatorAllocator.allocate(
-                    room,
-                    selectedSession,
-                    invigilators,
-                    studentCount);
+            final Room roomForTask = room;
+            final int studentsForTask = studentCount;
 
-            if (success) {
-                allocatedAny = true;
+            // PHASE 8: Define the task using Runnable.
+            Runnable allocationTask = new Runnable() {
+
+                @Override
+                public void run() {
+
+                    boolean success;
+
+                    /*
+                     * PHASE 9:
+                     * Synchronization prevents multiple threads
+                     * from accessing the allocator simultaneously.
+                     */
+                    synchronized (invigilatorAllocator) {
+
+                        success = invigilatorAllocator.allocate(
+                                roomForTask,
+                                selectedSession,
+                                invigilators,
+                                studentsForTask);
+                    }
+
+                    // Thread-safe update of the shared result.
+                    if (success) {
+                        allocatedAny.set(true);
+                    }
+                }
+            };
+
+            // Create a separate worker thread for this room.
+            Thread worker = new Thread(
+                    allocationTask,
+                    "Allocation-" + room.getRoomId());
+
+            // Normal thread priority.
+            worker.setPriority(Thread.NORM_PRIORITY);
+
+            // Non-daemon thread.
+            worker.setDaemon(false);
+
+            allocationThreads.add(worker);
+
+            // Start the worker thread.
+            worker.start();
+        }
+
+        /*
+         * PHASE 8:
+         * The main thread waits until all allocation workers finish.
+         */
+        for (Thread worker : allocationThreads) {
+
+            try {
+
+                worker.join();
+
+            } catch (InterruptedException e) {
+
+                // Request interruption of all allocation workers.
+                for (Thread runningWorker : allocationThreads) {
+                    runningWorker.interrupt();
+                }
+
+                // Restore the main thread's interrupted status.
+                Thread.currentThread().interrupt();
+
+                System.out.println(
+                        "Waiting for allocation was interrupted.");
+
+                return;
             }
         }
 
-        if (!allocatedAny) {
-            System.out.println("No invigilator allocation was completed.");
+        // Display the final allocation result.
+        if (allocatedAny.get()) {
+
+            System.out.println(
+                    "Concurrent allocation process completed.");
+
+        } else {
+
+            System.out.println(
+                    "No invigilator allocation was completed.");
         }
     }
 
