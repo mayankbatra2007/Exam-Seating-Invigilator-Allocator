@@ -25,39 +25,64 @@ public class Main {
         int choice = 0;
 
         do {
+
             System.out.println("\n===== MAIN MENU =====");
+
+            // ================= ADD =================
+
+            System.out.println("\n----- ADD -----");
             System.out.println("1. Add Student");
             System.out.println("2. Add Room");
             System.out.println("3. Add Invigilator");
-            System.out.println("4. View Students");
-            System.out.println("5. View Rooms");
-            System.out.println("6. View Invigilators");
-            System.out.println("7. Search Student");
-            System.out.println("8. Remove Student");
-            System.out.println("9. View Sorted Roll Numbers");
-            System.out.println("10. View Unique Branches");
-            System.out.println("11. View Overflow Students");
-            System.out.println("12. Add Exam Session");
-            System.out.println("13. View Exam Sessions");
+            System.out.println("4. Add Exam Session");
+
+            // ================= VIEW =================
+
+            System.out.println("\n----- VIEW -----");
+            System.out.println("5. View Students");
+            System.out.println("6. View Rooms");
+            System.out.println("7. View Invigilators");
+            System.out.println("8. View Exam Sessions");
+            System.out.println("9. View Overflow Students");
+
+            // ================= OTHER OPERATIONS =================
+
+            System.out.println("\n----- OTHER OPERATIONS -----");
+            System.out.println("10. Search Student");
+            System.out.println("11. Remove Student");
+            System.out.println("12. View Sorted Roll Numbers");
+            System.out.println("13. View Unique Branches");
             System.out.println("14. Search Exam Session");
             System.out.println("15. Generate Session Report");
+
+            // ================= ALLOCATION =================
+
+            System.out.println("\n----- ALLOCATION -----");
             System.out.println("16. Allocate Seating");
             System.out.println("17. Display Seating Chart");
             System.out.println("18. Allocate Invigilators");
             System.out.println("19. View Invigilator Allocations");
+
+            // ================= REPORTS =================
+
+            System.out.println("\n----- REPORTS -----");
             System.out.println("20. System Dashboard");
             System.out.println("21. Seating Report");
             System.out.println("22. Invigilator Duty Report");
-            System.out.println("23. Exit");
+
+            System.out.println("\n23. Exit");
 
             System.out.print("Enter your choice: ");
 
-            // Wrapper class converts String input into Integer
+            // Convert String input into Integer.
             Integer choiceInput;
 
             try {
+
                 choiceInput = Integer.valueOf(sc.nextLine());
+
             } catch (NumberFormatException e) {
+
                 System.out.println("Please enter a valid number!");
                 continue;
             }
@@ -65,6 +90,8 @@ public class Main {
             choice = choiceInput;
 
             switch (choice) {
+
+                // ================= ADD =================
 
                 case 1:
                     addStudent();
@@ -79,43 +106,47 @@ public class Main {
                     break;
 
                 case 4:
-                    studentManager.displayStudents();
-                    break;
-
-                case 5:
-                    viewRooms();
-                    break;
-
-                case 6:
-                    viewInvigilators();
-                    break;
-
-                case 7:
-                    searchStudent();
-                    break;
-
-                case 8:
-                    removeStudent();
-                    break;
-
-                case 9:
-                    studentManager.displaySortedRollNumbers();
-                    break;
-
-                case 10:
-                    studentManager.displayBranches();
-                    break;
-
-                case 11:
-                    studentManager.displayOverflowStudents();
-                    break;
-
-                case 12:
                     addExamSession();
                     break;
 
-                case 13:
+                // ================= VIEW =================
+
+                case 5:
+                    studentManager.displayStudents();
+                    break;
+
+                case 6:
+                    viewRooms();
+                    break;
+
+                case 7:
+                    viewInvigilators();
+                    break;
+
+                case 8:
                     sessionManager.displaySessions();
+                    break;
+
+                case 9:
+                    studentManager.displayOverflowStudents();
+                    break;
+
+                // ================= OTHER OPERATIONS =================
+
+                case 10:
+                    searchStudent();
+                    break;
+
+                case 11:
+                    removeStudent();
+                    break;
+
+                case 12:
+                    studentManager.displaySortedRollNumbers();
+                    break;
+
+                case 13:
+                    studentManager.displayBranches();
                     break;
 
                 case 14:
@@ -125,6 +156,8 @@ public class Main {
                 case 15:
                     System.out.println(sessionManager.generateReport());
                     break;
+
+                // ================= ALLOCATION =================
 
                 case 16:
                     allocateSeating();
@@ -142,6 +175,8 @@ public class Main {
                     invigilatorAllocator.displayAllAssignments();
                     break;
 
+                // ================= REPORTS =================
+
                 case 20:
                     displayDashboard();
                     break;
@@ -153,6 +188,8 @@ public class Main {
                 case 22:
                     displayInvigilatorDutyReport();
                     break;
+
+                // ================= EXIT =================
 
                 case 23:
                     System.out.println("Exiting project...");
