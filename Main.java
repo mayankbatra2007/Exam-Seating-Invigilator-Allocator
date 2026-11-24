@@ -45,7 +45,9 @@ public class Main {
             System.out.println("18. Allocate Invigilators");
             System.out.println("19. View Invigilator Allocations");
             System.out.println("20. System Dashboard");
-            System.out.println("21. Exit");
+            System.out.println("21. Seating Report");
+            System.out.println("22. Invigilator Duty Report");
+            System.out.println("23. Exit");
 
             System.out.print("Enter your choice: ");
 
@@ -144,6 +146,14 @@ public class Main {
                     break;
 
                 case 21:
+                    displaySeatingReport();
+                    break;
+
+                case 22:
+                    displayInvigilatorDutyReport();
+                    break;
+
+                case 23:
                     System.out.println("Exiting project...");
                     break;
 
@@ -151,7 +161,7 @@ public class Main {
                     System.out.println("Invalid choice!");
             }
 
-        } while (choice != 21);
+        } while (choice != 23);
 
         sc.close();
     }
@@ -561,8 +571,7 @@ public class Main {
                     room,
                     selectedSession,
                     invigilators,
-                    studentCount
-            );
+                    studentCount);
 
             if (success) {
                 allocatedAny = true;
@@ -573,7 +582,6 @@ public class Main {
             System.out.println("No invigilator allocation was completed.");
         }
     }
-
 
     // Displays overall project statistics
     static void displayDashboard() {
@@ -616,6 +624,172 @@ public class Main {
         System.out.println("======================================");
     }
 
+    // Displays seating details and statistics for all rooms
+    static void displaySeatingReport() {
 
+        if (rooms.isEmpty()) {
+            System.out.println("No rooms available!");
+            return;
+        }
+
+        int totalCapacity = 0;
+        int totalSeated = 0;
+
+        System.out.println("\n========== SEATING REPORT ==========");
+
+        for (Room room : rooms) {
+
+            String[][] seats = room.getSeats();
+
+            int occupied = 0;
+
+            // Count occupied seats
+            for (int row = 0; row < seats.length; row++) {
+
+                for (int col = 0; col < seats[row].length; col++) {
+
+                    if (seats[row][col] != null) {
+                        occupied++;
+                    }
+                }
+            }
+
+            int capacity = room.getCapacity();
+            int emptySeats = capacity - occupied;
+
+            totalCapacity += capacity;
+            totalSeated += occupied;
+
+            // Display room information
+            System.out.println("\n------------------------------------");
+
+            System.out.println("Room ID       : " + room.getRoomId());
+
+            System.out.println("Rows          : " + room.getRows());
+
+            System.out.println("Columns       : " + room.getColumns());
+
+            System.out.println("Capacity      : " + capacity);
+
+            System.out.println("Students      : " + occupied);
+
+            System.out.println("Empty Seats   : " + emptySeats);
+
+            // Display seating chart
+            System.out.println("\nSeating Chart:");
+
+            for (int row = 0; row < seats.length; row++) {
+
+                for (int col = 0; col < seats[row].length; col++) {
+
+                    if (seats[row][col] == null) {
+
+                        System.out.printf("[ %-10s ]", "EMPTY");
+
+                    } else {
+
+                        System.out.printf("[ %-10s ]", seats[row][col]);
+                    }
+                }
+
+                System.out.println();
+            }
+        }
+
+        // Calculate overall statistics
+        int totalStudents = studentManager.getStudentCount();
+
+        int overflowStudents = studentManager.getOverflowCount();
+
+        int emptySeats = totalCapacity - totalSeated;
+
+        System.out.println("\n========== OVERALL SUMMARY ==========");
+
+        System.out.println("Registered Students : " + totalStudents);
+
+        System.out.println("Total Room Capacity : " + totalCapacity);
+
+        System.out.println("Students Seated     : " + totalSeated);
+
+        System.out.println("Empty Seats         : " + emptySeats);
+
+        System.out.println("Overflow Students   : " + overflowStudents);
+
+        // Display overflow student details
+        if (overflowStudents > 0) {
+
+            System.out.println("\n========== OVERFLOW DETAILS ==========");
+
+            studentManager.displayOverflowStudents();
+
+        } else {
+
+            System.out.println("\nNo overflow students.");
+        }
+
+        System.out.println("======================================");
+    }
+
+    // Displays duty information for all invigilators
+    static void displayInvigilatorDutyReport() {
+
+        if (invigilators.isEmpty()) {
+            System.out.println("No invigilators available!");
+            return;
+        }
+
+        int totalDuties = 0;
+        int totalMaxDuties = 0;
+        int totalRemainingDuties = 0;
+
+        System.out.println("\n========== INVIGILATOR DUTY REPORT ==========");
+
+        System.out.printf(
+                "%-20s %-20s %-15s %-15s %-15s%n",
+                "Name",
+                "Type",
+                "Completed",
+                "Maximum",
+                "Remaining");
+
+        System.out.println(
+                "--------------------------------------------------------------------------");
+
+        for (Invigilator invigilator : invigilators) {
+
+            int completed = invigilator.getDutiesSoFar();
+
+            int maximum = invigilator.getMaxDuties();
+
+            int remaining = Math.max(0, maximum - completed);
+
+            totalDuties += completed;
+            totalMaxDuties += maximum;
+            totalRemainingDuties += remaining;
+
+            System.out.printf(
+                    "%-20s %-20s %-15d %-15d %-15d%n",
+                    invigilator.getName(),
+                    invigilator.getType(),
+                    completed,
+                    maximum,
+                    remaining);
+        }
+
+        System.out.println(
+                "--------------------------------------------------------------------------");
+
+        System.out.println("\n========== OVERALL SUMMARY ==========");
+
+        System.out.println("Total Invigilators      : " + invigilators.size());
+
+        System.out.println("Total Completed Duties : " + totalDuties);
+
+        System.out.println("Total Duty Capacity    : " + totalMaxDuties);
+
+        System.out.println("Remaining Duty Capacity: " + totalRemainingDuties);
+
+        System.out.println("=====================================");
+    }
 
 }
