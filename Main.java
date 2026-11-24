@@ -1,3 +1,5 @@
+import java.sql.Connection;
+import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.Scanner;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -17,6 +19,19 @@ public class Main {
     static Scanner sc = new Scanner(System.in);
 
     public static void main(String[] args) {
+        rooms.addAll(Room.loadRooms());
+        try (Connection connection = DatabaseConnection.getConnection()) {
+
+            System.out.println(
+                    "MySQL connected successfully!");
+
+        } catch (SQLException e) {
+
+            System.out.println(
+                    "Database connection failed!");
+
+            e.printStackTrace();
+        }
 
         System.out.println("==================================");
         System.out.println(projectName);
@@ -281,9 +296,12 @@ public class Main {
 
         Room room = new Room(roomId, rows, columns);
 
-        rooms.add(room);
-
-        System.out.println("Room added successfully!");
+        if (Room.saveRoom(room)) {
+            rooms.add(room);
+            System.out.println("Room added and saved successfully!");
+        } else {
+            System.out.println("Room was not added.");
+        }
     }
 
     // Add an invigilator
