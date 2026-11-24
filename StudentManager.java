@@ -139,6 +139,11 @@ public class StudentManager {
         return overflowStudents.size();
     }
 
+    // Clear overflow students before a new allocation.
+    public void clearOverflowStudents() {
+        overflowStudents.clear();
+    }
+
     // Return student list for future algorithms
     public ArrayList<Student> getStudents() {
         return students;
