@@ -6,6 +6,7 @@ public class Invigilator {
     private String type;
     private int maxDuties;
     private int dutiesSoFar;
+    
 
     public Invigilator(String name, String type, int dutiesSoFar) {
         this.name = name;
